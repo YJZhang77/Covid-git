@@ -9,4 +9,4 @@ This project include the following Datasets:
 
 3. Death cases for counties
 
-4. BU data (may not represent here)
+4. BU data (may not represent here but on SCC)
