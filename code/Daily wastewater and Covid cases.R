@@ -195,8 +195,9 @@ date_w = wastewater$Sample_date
 
 date_c = newcases$case_date
 
-n_c = length(date_w)
+n_c = length(date_c)
 n_c
+
 DateCom = date_c %in% date_w
 
 ratio_c = newcases[DateCom, ]
@@ -212,9 +213,12 @@ ratio_c["North_W"] = wastewater$Northern..copies.mL.
 
 ######### Daily ratio
 
-ratio_c['South_ratio'] = rep(1, n_c) 
+n = nrow(ratio_c)
 
-for (i in 1:n_c){
+ratio_c['South_ratio'] = rep(1, n)
+
+
+for (i in 1:n){
   if (ratio_c$Southern[i] <= 0 | is.na(ratio_c$South_W[i])){
     ratio_c$South_ratio[i] = 0
   }
@@ -222,8 +226,8 @@ for (i in 1:n_c){
   
 }
 
-ratio_c['North_ratio'] = rep(1, n_c) 
-for (i in 1:n_c){
+ratio_c['North_ratio'] = rep(1, n) 
+for (i in 1:n){
   if (ratio_c$Northern[i] <= 0 | is.na(ratio_c$North_W[i])){
     ratio_c$North_ratio[i] = 0
   }
@@ -312,6 +316,30 @@ north_p <- ggplot(ratio_c[ratio_c$North_ratio != 0,], aes(x=case_date, y=North_r
   xlab("")
 north_p
 
+############## get the daily lag 
+
+library(astsa)
+
+ratio_c_new = ratio_c[!is.na(ratio_c$South_W) & !is.na(ratio_c$Southern),]
+
+
+ccfvalues_s = ccf(ratio_c_new$South_W, ratio_c_new$Southern ) 
+ccfvalues_s
+
+
+ratio_c_new_n = ratio_c[!is.na(ratio_c$North_W) & !is.na(ratio_c$Northern),]
+
+
+ccfvalues_n = ccf(ratio_c_new_n$North_W, ratio_c_new_n$Northern ) 
+ccfvalues_n
+
+
+
+
+
+
+
+
 ######### 7 day cumulative 
 library(zoo)
 
@@ -320,11 +348,13 @@ cumula_days = 7
 South_cumu = rollapply(ratio_c$Southern, cumula_days, FUN = sum)
 North_cumu = rollapply(ratio_c$Northern, cumula_days, FUN = sum)
 
+length(South_cumu)
 
 
-head_s = matrix(ncol=1, nrow = n_c)
+head_s = matrix(ncol=1, nrow = n)
+
 # add
-for (i in 1:n_c){
+for (i in 1:n){
   if (i == 1) {
    head_s[i] = ratio_c$Southern[i]}
   
@@ -336,11 +366,11 @@ for (i in 1:n_c){
   
 }
 
-ratio_c$South_cum= head_s 
+ratio_c$South_cum = head_s 
 
-ratio_c['South_ratio_cum'] = rep(1, n_c) 
+ratio_c['South_ratio_cum'] = rep(1, n) 
 
-for (i in 1:n_c){
+for (i in 1:n){
   if (ratio_c$South_cum[i] <= 0 | is.na(ratio_c$South_W[i])){
     ratio_c$South_ratio_cum[i] = 0
   }
@@ -348,9 +378,9 @@ for (i in 1:n_c){
   
 }
 
-head_n = matrix(ncol=1, nrow = n_c)
+head_n = matrix(ncol=1, nrow = n)
 # add
-for (i in 1:n_c){
+for (i in 1:n){
   if (i == 1) {
     head_n[i] = ratio_c$Northern[i]}
   
@@ -364,8 +394,8 @@ for (i in 1:n_c){
 
 ratio_c$North_cum= head_n 
 
-ratio_c['North_ratio_cum'] = rep(1, n_c) 
-for (i in 1:n_c){
+ratio_c['North_ratio_cum'] = rep(1, n) 
+for (i in 1:n){
   if (ratio_c$North_cum[i] <= 0 | is.na(ratio_c$North_W[i])){
     ratio_c$North_ratio_cum[i] = 0
   }
@@ -383,6 +413,20 @@ north_p <- ggplot(ratio_c[ratio_c$North_ratio_cum != 0,], aes(x=case_date, y=Nor
   xlab("")
 north_p
 
+################ 7 cum lag 
+
+ratio_c_new_s = ratio_c[!is.na(ratio_c$South_W) & !is.na(ratio_c$South_cum),]
+
+
+ccfvalues_s = ccf(ratio_c_new_s$South_W, as.numeric(ratio_c_new_s$South_cum ) )
+ccfvalues_s
+
+str(ratio_c_new_s)
+
+ratio_c_new_n = ratio_c[!is.na(ratio_c$North_W) & !is.na(ratio_c$North_cum),]
+
+ccfvalues_n = ccf(ratio_c_new_n$North_W, as.numeric(ratio_c_new_n$North_cum ) )
+ccfvalues_n
 
 
 south = data.frame(cbind(ratio_c$case_date, ratio_c$South_ratio, ratio_c$South_ratio_cum))
