@@ -461,3 +461,55 @@ ggplot(north_long[north_long$value !=0,],                            # Draw ggpl
   geom_line() +
   ggtitle("Wastewater Northern Cases Ratio")
 
+
+
+# write.csv(ratio_c,"C:/Users/Yanjia/Desktop/research/BU Infection/covid/BU and CDC/wastewater_covid_ratio.csv", row.names = FALSE)
+
+##############################################################
+######### distributed lag model ##############################
+##############################################################
+
+wastewater_covid = read.csv("wastewater_covid_ratio.csv",header = TRUE)
+
+str(wastewater_covid)
+
+
+install.packages("dLagM")
+
+library(dLagM)
+
+############ Rolling correlations
+
+range(wastewater_covid$case_date)
+
+
+waster_s = ts(wastewater_covid$South_W, start = c(2020,68), freq=365)
+case_s = ts(wastewater_covid$Southern, start = c(2020,68), freq=365)
+
+rolCorPlot(y = case_s, x=waster_s,  width= c(7,10,12), level = 0.95, main = NULL, SDtest = TRUE)
+
+dlmFit1 <- dlm(formula = Southern ~ South_W,
+               
+               data = wastewater_covid, q = 10)
+summary(dlmFit1)
+
+str(wastewater_covid)
+
+dlmFit1 <- dlm(formula = South_cum ~ South_W,
+               
+               data = wastewater_covid, q = 8)
+summary(dlmFit1)
+
+
+dlmFit2 <- dlm(formula = Northern ~ North_W,
+               
+               data = wastewater_covid, q = 10)
+summary(dlmFit2)
+
+str(wastewater_covid)
+
+dlmFit2 <- dlm(formula = North_cum ~ North_W,
+               
+               data = wastewater_covid, q = 15)
+summary(dlmFit2)
+
