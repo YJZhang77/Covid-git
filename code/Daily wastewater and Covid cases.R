@@ -497,8 +497,20 @@ str(wastewater_covid)
 
 dlmFit1 <- dlm(formula = South_cum ~ South_W,
                
-               data = wastewater_covid, q = 8)
+               data = wastewater_covid, q = 10)
 summary(dlmFit1)
+
+remove = list(South_W = c(1,2,3,4,5,6,7))
+
+dlmFit1_2 <- dlm(formula = South_cum ~ South_W,
+               
+               data = wastewater_covid, q = 15, remove = remove)
+
+summary(dlmFit1_2)
+
+
+
+
 
 
 dlmFit2 <- dlm(formula = Northern ~ North_W,
