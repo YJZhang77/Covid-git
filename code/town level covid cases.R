@@ -17,9 +17,10 @@ c(nrow(town_cases), ncol(town_cases))
 
 date = names(town_cases)[2:ncol(town_cases)]
 
+sample_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
+
 sample_date[sample_date == "2020-10-23"]
 
-sample_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
 
 
 length(sample_date)
@@ -100,12 +101,9 @@ cases = function(data_name, Town_Name, date_range){
 North_town_cases = cases(town_cases, North_town, date_list)
 
 tail(North_town_cases)
+sum(North_town_cases[,3:ncol(North_town_cases)] == 2.5, na.rm = TRUE)
 
-sum(North_town_cases[,2:ncol(North_town_cases)] == 2.5)
-
-range(North_town_cases$case_date)
-
-tail(North_town_cases)
+range(North_town_cases$sample_date)
 
 c(nrow(North_town_cases), ncol(North_town_cases))
 
@@ -120,39 +118,54 @@ c(nrow(North_town_cases), ncol(North_town_cases))
 
 South_town_cases = cases(town_cases, South_town, date_list)
 
-sum(South_town_cases[,2:ncol(South_town_cases)] == 2.5)/(nrow(South_town_cases)*(ncol(South_town_cases-2)))
+sum(South_town_cases[,2:ncol(South_town_cases)] == 2.5, na.rm =TRUE )
 
-
-range(South_town_cases$case_date)
+range(South_town_cases$sample_date)
 
 tail(South_town_cases)
 
 c(nrow(South_town_cases), ncol(South_town_cases))
 
+
+###### Total number of <5 
+
+n1 = sum(North_town_cases[,3:ncol(North_town_cases)] == 2.5, na.rm = TRUE)
+
+n2 = sum(South_town_cases[,2:ncol(South_town_cases)] == 2.5, na.rm =TRUE )
+
+total = nrow(North_town_cases)*(ncol(North_town_cases)-2) + nrow(South_town_cases)*(ncol(South_town_cases)-2)
+
+percentage = (n1+n2)/total
+
+
+
 # n = rep("NA", length(South_town))
 # for (i in 1:length(South_town)){
 #   n[i] = sum(is.na(South_town_cases[,i+2]))
 # }
+# n
 # 
-# South_nas = South_town_cases[is.na(South_town_cases$Ashland),names ]
+# South_nas = South_town_cases[is.na(South_town_cases$Ashland), 1]
 # 
-# missing = barplot(table(South_nas$Weekday), main="Borplot for Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
-# 
-# text(missing,table(South_nas$Weekday)+1, paste(table(South_nas$Weekday)) ,cex=1) 
+# length(South_nas)
+
 
 ### all the dates are the same North/ South
 
-n_missing = 90
+South_nas = South_town_cases[is.na(South_town_cases$Ashland), 1]
+n_missing = length(South_nas)
 names = c("sample_date", "Weekday")
 
 North_nas = North_town_cases[is.na(North_town_cases$Boston),names ]
+
+## barplot
 
 missing = barplot(table(North_nas$Weekday), main="Borplot for Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
 
 text(missing,table(North_nas$Weekday)+1, paste(table(North_nas$Weekday)) ,cex=1) 
 
 
-######### implementing NAs 
+######### implementing NAs with the average number of 10 
 
 implement = function(data_name, Town_name){
   
@@ -183,11 +196,20 @@ tail(North_town_miss)
 South_town_miss = implement(South_town_cases, South_town)
 tail(South_town_miss)
 
+#### delete double "2020-10-23" 
+
+North_town_miss_correct = North_town_miss[-c(115), ]
+
+North_town_miss_correct[North_town_miss_correct$sample_date == "2020-10-23", ]
+
+South_town_miss_correct = South_town_miss[-c(115), ]
+South_town_miss_correct[South_town_miss_correct$sample_date == "2020-10-23", ]
+
 
 ###################### daily sum
 
-North_sum = rowSums(North_town_miss[, 3:ncol(North_town_miss)])
-South_sum = rowSums(South_town_miss[, 3:ncol(South_town_miss)])
+North_sum = rowSums(North_town_miss_correct[, 3:ncol(North_town_miss)])
+South_sum = rowSums(South_town_miss_correct[, 3:ncol(South_town_miss)])
 
 North_South_case = date_list
 North_South_case$North_sum =  North_sum
@@ -195,18 +217,20 @@ North_South_case$South_sum =  South_sum
 
 length(North_sum)
 nrow(date_list)
-length(North_town_miss$sample_date)
 
-North_town_miss$sample_date[North_town_miss$sample_date %in% date_list$sample_date]
-
-North_town_miss[North_town_miss$sample_date == "2020-10-23",]
-
-South_town_cases[South_town_cases$sample_date == "2020-10-23",]
 
 library("reshape2")
 library("ggplot2")
 
-case_long = melt(North_South_case, id.vars = "sample_date") 
+case = data.frame(North_South_case[, c(1,3,4)], "Boston" = North_town_miss_correct$Boston)
+
+short_range = seq(as.Date("2021-12-01"), as.Date("2022-02-01"), by = 1) 
+
+short_case = data.frame(North_South_case[North_South_case$sample_date %in% short_range,c(1,3,4)],
+                        "Boston" = North_town_miss_correct[North_town_miss_correct$sample_date %in% short_range,"Boston"])
+
+
+case_long = melt(case, id.vars = "sample_date") 
 
 ggplot(case_long,                            # Draw ggplot2 time series plot
        aes(x = sample_date,
@@ -215,8 +239,188 @@ ggplot(case_long,                            # Draw ggplot2 time series plot
   geom_line() + 
   ggtitle("Northern and Southern Daily Posivitive Cases")
 
+short_case_long = melt(short_case, id.vars = "sample_date")
+ggplot(short_case_long,                            # Draw ggplot2 time series plot
+       aes(x = sample_date,
+           y = value,
+           col = variable)) +
+  geom_line() + 
+  ggtitle("Northern and Southern Daily Posivitive Cases During 2021-12-01 -- 2022-02-01 ")
 
+
+
+
+
+######## check if they have the same date peaks and vallens
+
+library(pracma)
+library(ggrepel)
+
+
+Dataset1 = North_South_case
+
+peaks = function(Dataset1, Dataset2){
+  
+  indx_n = findpeaks(Dataset1$North_sum,threshold = 1)
+  indx_s = findpeaks(Dataset1$South_sum, threshold = 1)
+  indx_b = findpeaks(Dataset2$Boston, threshold = 1)
+  
+  sample_n = Dataset1[indx_n[,2], ]
+  sample_s = Dataset1[indx_s[,2], ]
+  sample_b = Dataset2[indx_b[,2],1:3]
+  
+  count3 = as.Date(intersect(intersect(sample_n[,1], sample_s[,1]),sample_b[,1]))
+  
+  count2 = as.Date(sort(union(union(setdiff(intersect(sample_n[,1], sample_s[,1]),sample_b[,1]),
+                                     setdiff(intersect(sample_n[,1], sample_b[,1]),sample_s[,1])),
+                               setdiff(intersect(sample_b[,1], sample_s[,1]),sample_n[,1]))))
+  
+  count1 = as.Date(sort(union(union(setdiff(setdiff(sample_n[,1], sample_s[,1]),sample_b[,1] ),
+                                     setdiff(setdiff(sample_s[,1], sample_b[,1]),sample_n[,1])), 
+                               setdiff(setdiff(sample_b[,1], sample_s[,1]),sample_n[,1]))))
+  
+  temp1 = c(count3, count2, count1)
+  temp2 = c(rep("Three", length(count3)), rep("Two", length(count2)), rep("One", length(count1)))
+  
+  same_date = data.frame("Same_Date" = temp1, "Category" = temp2)
+  
+  all = list("NorthPeaks"=sample_n, "SouthPeaks"=sample_s, "BostonPeaks"=sample_b, "Distrbution"=same_date)
+  
+  return(all)
+  
+  }
+
+same = peaks(North_South_case, North_town_miss_correct)
+
+same$Distrbution
+
+plot(North_South_case$sample_date, North_South_case$North_sum,
+     type = "l",
+     col = 2,
+     # labels = format(wastewater$Sample_date, "%b %Y"),
+     xlab = "Date",
+     main = "Northern, Southern, and Boston During 2021-12-01---2022-02-01",
+     ylab = "Values" )
+lines(North_South_case$sample_date, North_South_case$South_sum, type = 'l', col = 3)
+lines(North_town_miss_correct$sample_date, North_town_miss_correct$Boston, type = "l", col = 4)
+
+
+points(same$NorthPeaks$sample_date, same$NorthPeaks$North_sum, col = 2 )
+points(same$SouthPeaks$sample_date, same$SouthPeaks$South_sum, col = 3 )
+points(same$BostonPeaks$sample_date, same$BostonPeaks$Boston, col=4)
+
+legend("topleft",                           # Add legend to plot
+       c("Northern","Southern", "Boston"),
+       lty = 1,
+       col = c(2:4))
+
+count = barplot(sort(table(same$Distrbution$Category), decreasing = TRUE),        
+                ylim = c(0, max(table(same$Distrbution$Category))),
+                # xlab = "Counts",
+                ylab = "Number of Days",
+                main = 'Number of Same Date Peaks from Northern, Southern, and Boston')
+
+text(count,sort(table(same$Distrbution$Category), decreasing = TRUE)*0.95 , paste(sort(table(same$Distrbution$Category), decreasing = TRUE)) ,cex=1) 
+
+#### peaks in weekdays
+
+week_N = barplot(sort(table(same$NorthPeaks$Weekday), decreasing = TRUE),        
+                ylim = c(0, max(table(same$NorthPeaks$Weekday))),
+                # xlab = "Counts",
+                ylab = "Number of Peaks",
+                main = 'Number of Peaks from Northern')
+
+text(week_n,sort(table(same$NorthPeaks$Weekday), decreasing = TRUE)*(0.95) , paste(sort(table(same$NorthPeaks$Weekday), decreasing = TRUE)) ,cex=1) 
+
+week_s = barplot(sort(table(same$SouthPeaks$Weekday), decreasing = TRUE),        
+               ylim = c(0, max(table(same$SouthPeaks$Weekday))),
+               # xlab = "Counts",
+               ylab = "Number of Peaks",
+               main = 'Number of Peaks from Souththern')
+
+text(week_s,sort(table(same$SouthPeaks$Weekday), decreasing = TRUE)*(0.95) , paste(sort(table(same$SouthPeaks$Weekday), decreasing = TRUE)) ,cex=1) 
+
+
+week_b = barplot(sort(table(same$BostonPeaks$Weekday), decreasing = TRUE),        
+                 ylim = c(0, max(table(same$BostonPeaks$Weekday))),
+                 # xlab = "Counts",
+                 ylab = "Number of Peaks",
+                 main = 'Number of Peaks from Souththern')
+
+text(week_b,sort(table(same$BostonPeaks$Weekday), decreasing = TRUE)*(0.95) , paste(sort(table(same$BostonPeaks$Weekday), decreasing = TRUE)) ,cex=1) 
+
+
+
+########### example for 2021-12-01, 2022-2-1 
+
+indx_n = findpeaks(short_case$North_sum,threshold = 1)
+  
+indx_s = findpeaks(short_case$South_sum,threshold = 1)
+indx_b = findpeaks(short_case$Boston, threshold = 1)
+
+sample_n = short_case[indx_n[,2], ]
+sample_s = short_case[indx_s[,2], ]
+sample_b = short_case[indx_b[,2], ]
+
+
+
+count_3 = as.Date(intersect(intersect(sample_n[,1], sample_s[,1]),sample_b[,1]))
+
+
+count_2 = as.Date(sort(union(union(setdiff(intersect(sample_n[,1], sample_s[,1]),sample_b[,1]),
+                           setdiff(intersect(sample_n[,1], sample_b[,1]),sample_s[,1])),
+                           setdiff(intersect(sample_b[,1], sample_s[,1]),sample_n[,1]))))
+
+count_1 = as.Date(sort(union(union(setdiff(setdiff(sample_n[,1], sample_s[,1]),sample_b[,1] ),
+                             setdiff(setdiff(sample_s[,1], sample_b[,1]),sample_n[,1])), 
+                             setdiff(setdiff(sample_b[,1], sample_s[,1]),sample_n[,1]))))
+
+fre_bar_same = sort( c(length(count_3), length(count_2), length(count_1)),decreasing = TRUE) 
+
+
+
+
+count = barplot(fre_bar_same,names.arg=c("3", "2", "1"),        
+        ylim = c(0, max(fre_bar_same)),
+        xlab = "Counts",
+        ylab = "Number of Days",
+        main = 'Number of Same Date Peaks from Northern, Southern, and Boston')
+
+text(count,fre_bar_same-0.5, paste(fre_bar_same) ,cex=1) 
+
+
+
+
+
+short_ggplot = ggplot(short_case_long,                            # Draw ggplot2 time series plot
+                      aes(x = sample_date,
+                          y = value,
+                          col = variable)) +
+  geom_line() + 
+  ggtitle("Northern and Southern Daily Posivitive Cases During 2021-12-01 -- 2022-02-01 ")
+
+
+
+plot(short_case$sample_date, short_case$North_sum,
+     type = "l",
+     col = 2,
+     # labels = format(wastewater$Sample_date, "%b %Y"),
+     xlab = "Date",
+     main = "Northern, Southern, and Boston During 2021-12-01---2022-02-01",
+     ylab = "Values" )
+lines(short_case$sample_date, short_case$South_sum, type = 'l', col = 3)
+lines(short_case$sample_date, short_case$Boston, type = "l", col = 4)
+points(sample_n$sample_date, sample_n$North_sum, col = 2 )
+points(sample_s$sample_date, sample_s$South_sum, col = 3 )
+points(sample_b$sample_date, sample_b$Boston, col=4)
+legend("topleft",                           # Add legend to plot
+       c("Northern","Southern", "Boston"),
+       lty = 1,
+       col = c(2:4))
+
+#######################################################################
 ########## get the daily wastewater
+#######################################################################
 
 wastewater = read.csv("daily_wastewater325.csv")
 
