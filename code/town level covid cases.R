@@ -17,22 +17,28 @@ c(nrow(town_cases), ncol(town_cases))
 
 date = names(town_cases)[2:ncol(town_cases)]
 
+sample_date[sample_date == "2020-10-23"]
+
 sample_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
+
+
 length(sample_date)
+
 Weekday = strftime(sample_date, format = "%A")
 
-barplot(table(Weekday), main = 'Number of Reports in Week')
-
+barplot(table(Weekday), main = 'Number of Reports from Covid')
 
 
 ###################### town names 
 
-North_town = c("Boston","Brookline", "Newton","Waltham", "Lexington", "Bedford",
+North_town = c("Boston","Waltham", "Lexington", "Bedford",
               "Burlington", "Wilmington", "Reading", "Wakefield","Stoneham",
               "Woburn", "Winchester", "Arlington", "Medford", "Melrose",
               "Malden", "Revere", "Everett", "Chelsea", "Somerville", "Belmont",
               "Watertown", "Cambridge", "Winthrop")
 
+#"Brookline", "Newton",
+ 
 
 South_town = c("Ashland", "Framingham", "Natick", "Wellesley", "Newton", "Needham",
                "Brookline", "Boston", "Dedham", "Westwood", "Norwood", "Walpole", "Milton",
@@ -46,37 +52,54 @@ c(length(North_town), length(South_town))
 
 town_cases[town_cases == "<5"] = 2.5
 
+##### check missing dates 
+
+
+date_range = seq(min(sample_date), max(sample_date), by = 1) 
+date_range[!date_range %in% sample_date]
+
+Weekday = strftime(date_range, format = "%A")
+
+date_list = data.frame("sample_date" = date_range,
+                       "Weekday" = Weekday)
+
+#### use the date range instead of the original dates
+
+
 ########### transpose the dataframe
 
-cases = function(data_name, Town_Name){
+cases = function(data_name, Town_Name, date_range){
+   
    part_cases = data_name[data_name[,1] %in% Town_Name, ] 
    n = ncol(part_cases)
-   date_list = names(part_cases)[2:n]
-   case_date = as.Date(substring(date_list, 2), format = "%m.%d.%Y")
+   date = names(part_cases)[2:n]
+   case_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
    
-   Weekday = strftime(case_date, format = "%A")
+   col_names = c('sample_date', Town_Name)
    
-   # Town_Name = unlist(unique(data_name[, 1]), use.names=FALSE)
-   
-   col_names = c('case_date','Weekday', Town_Name)
    cases = data.frame(matrix(ncol=length(col_names), nrow= length(case_date)))
    
    colnames(cases) = col_names
    
-   cases$case_date = case_date
-   cases$Weekday = Weekday
+   cases$sample_date = case_date
+   # cases$Weekday = Weekday
    
    for (i in Town_Name ){
      
      cases[i] = as.numeric(unlist(part_cases[part_cases$X == i, 2:n], use.names = FALSE))
    }
    
-   return(cases)
+   cases_all = merge(date_range, cases, by ='sample_date', all.x=TRUE)
+   
+   return(cases_all)
 }
+
 
 ####### North
 
-North_town_cases = cases(town_cases, North_town)
+North_town_cases = cases(town_cases, North_town, date_list)
+
+tail(North_town_cases)
 
 sum(North_town_cases[,2:ncol(North_town_cases)] == 2.5)
 
@@ -87,13 +110,17 @@ tail(North_town_cases)
 c(nrow(North_town_cases), ncol(North_town_cases))
 
 
+# n = rep("NA", length(North_town))
+# for (i in 1:length(North_town)){
+#   n[i] = sum(is.na(North_town_cases[,i+2]))
+# }
+
 
 ###### South 
 
-South_town_cases = cases(town_cases, South_town)
+South_town_cases = cases(town_cases, South_town, date_list)
 
 sum(South_town_cases[,2:ncol(South_town_cases)] == 2.5)/(nrow(South_town_cases)*(ncol(South_town_cases-2)))
-
 
 
 range(South_town_cases$case_date)
@@ -102,14 +129,79 @@ tail(South_town_cases)
 
 c(nrow(South_town_cases), ncol(South_town_cases))
 
-South_sum = rowSums(South_town_cases[, 3:ncol(South_town_cases)])
+# n = rep("NA", length(South_town))
+# for (i in 1:length(South_town)){
+#   n[i] = sum(is.na(South_town_cases[,i+2]))
+# }
+# 
+# South_nas = South_town_cases[is.na(South_town_cases$Ashland),names ]
+# 
+# missing = barplot(table(South_nas$Weekday), main="Borplot for Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
+# 
+# text(missing,table(South_nas$Weekday)+1, paste(table(South_nas$Weekday)) ,cex=1) 
+
+### all the dates are the same North/ South
+
+n_missing = 90
+names = c("sample_date", "Weekday")
+
+North_nas = North_town_cases[is.na(North_town_cases$Boston),names ]
+
+missing = barplot(table(North_nas$Weekday), main="Borplot for Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
+
+text(missing,table(North_nas$Weekday)+1, paste(table(North_nas$Weekday)) ,cex=1) 
 
 
-###################### daily sum 
-North_sum = rowSums(North_town_cases[, 3:ncol(North_town_cases)])
-South_sum = rowSums(South_town_cases[, 3:ncol(South_town_cases)])
+######### implementing NAs 
 
-North_South_case = data.frame(sample_date, North_sum, South_sum)
+implement = function(data_name, Town_name){
+  
+  test = data_name
+  n = nrow(data_name)
+  
+  for (i in Town_name){
+    for (j in 1:n){
+      if (is.na(data_name[j, i]) & j-5 < 1 & j+5 <= n ){ 
+        test[j,i] = round(mean(data_name[1:j+5, i], na.rm = T))
+      }
+      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 <= n){ 
+        test[j,i] = round(mean(data_name[(j-5):j+5, i],na.rm = T))
+      }
+      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 > n){ 
+        test[j,i] = round(mean(data_name[(j-5):n, i],na.rm = T))
+      }
+      else test[j, i] = data_name[j,i]
+    }
+  }
+  
+  return(test)
+} 
+
+North_town_miss = implement(North_town_cases, North_town)
+tail(North_town_miss)
+
+South_town_miss = implement(South_town_cases, South_town)
+tail(South_town_miss)
+
+
+###################### daily sum
+
+North_sum = rowSums(North_town_miss[, 3:ncol(North_town_miss)])
+South_sum = rowSums(South_town_miss[, 3:ncol(South_town_miss)])
+
+North_South_case = date_list
+North_South_case$North_sum =  North_sum
+North_South_case$South_sum =  South_sum
+
+length(North_sum)
+nrow(date_list)
+length(North_town_miss$sample_date)
+
+North_town_miss$sample_date[North_town_miss$sample_date %in% date_list$sample_date]
+
+North_town_miss[North_town_miss$sample_date == "2020-10-23",]
+
+South_town_cases[South_town_cases$sample_date == "2020-10-23",]
 
 library("reshape2")
 library("ggplot2")
