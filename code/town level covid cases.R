@@ -162,7 +162,7 @@ North_nas = North_town_cases[is.na(North_town_cases$Boston),names ]
 
 missing = barplot(table(North_nas$Weekday), main="Borplot for Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
 
-text(missing,table(North_nas$Weekday)+1, paste(table(North_nas$Weekday)) ,cex=1) 
+text(missing,table(North_nas$Weekday)*0.95, paste(table(North_nas$Weekday)) ,cex=1) 
 
 
 ######### implementing NAs with the average number of 10 
@@ -324,7 +324,7 @@ text(count,sort(table(same$Distrbution$Category), decreasing = TRUE)*0.95 , past
 
 #### peaks in weekdays
 
-week_N = barplot(sort(table(same$NorthPeaks$Weekday), decreasing = TRUE),        
+week_n = barplot(sort(table(same$NorthPeaks$Weekday), decreasing = TRUE),        
                 ylim = c(0, max(table(same$NorthPeaks$Weekday))),
                 # xlab = "Counts",
                 ylab = "Number of Peaks",
@@ -352,6 +352,7 @@ text(week_b,sort(table(same$BostonPeaks$Weekday), decreasing = TRUE)*(0.95) , pa
 
 
 ########### example for 2021-12-01, 2022-2-1 
+#################
 
 indx_n = findpeaks(short_case$North_sum,threshold = 1)
   
@@ -430,20 +431,18 @@ wastewater['Sample_date'] = as.Date(wastewater$Sample.Date, format = "%m/%d/%Y")
 str(wastewater)
 nrow(wastewater)
 
-startdate = range(North_South_case$sample_date)[1]
-enddate = range(North_South_case$sample_date)[2]
+water_date = wastewater[wastewater$Sample_date %in% date_list[,1], 12]
 
-water_date = wastewater[wastewater$Sample_date >= startdate & wastewater$Sample_date <= enddate, 12]
-water = wastewater[wastewater$Sample_date >= startdate & wastewater$Sample_date <= enddate, 2:3]
-
-water = data.frame(water_date, water)
-colnames(water) = c("sample_date", "South_water", "North_water") 
-head(water)
-
-sum(is.na(water))
+water = wastewater[wastewater$Sample_date %in%date_list[,1], c(2,3,12)]
+colnames(water) = c("South_water","North_water","sample_date" ) 
+tail(water)
 
 water$South_water = as.numeric(water$South_water)
 water$North_water = as.numeric(water$North_water)
+
+sum(is.na(water))
+
+
 
 water_long = melt(water, id.vars = "sample_date")
 ggplot(water_long,                            # Draw ggplot2 time series plot
@@ -455,13 +454,126 @@ ggplot(water_long,                            # Draw ggplot2 time series plot
 
 
 
-case_waste = merge(x = North_South_case, y = water, all = TRUE)
+#### implement missings 
+implement = function(data_name, Town_name){
+  
+  test = data_name
+  n = nrow(data_name)
+  
+  for (i in Town_name){
+    for (j in 1:n){
+      if (is.na(data_name[j, i]) & j-5 < 1 & j+5 <= n ){ 
+        test[j,i] = round(mean(data_name[1:j+5, i], na.rm = T))
+      }
+      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 <= n){ 
+        test[j,i] = round(mean(data_name[(j-5):j+5, i],na.rm = T))
+      }
+      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 > n){ 
+        test[j,i] = round(mean(data_name[(j-5):n, i],na.rm = T))
+      }
+      else test[j, i] = data_name[j,i]
+    }
+  }
+  
+  return(test)
+} 
+
+water_miss_correct = implement(water, c("South_water","North_water"))
+sum(is.na(water_miss_correct))
+
+water_miss_correct$Weekday = strftime(water_miss_correct$sample_date, format = "%A")
+  
+############# find peaks
+
+peaks_water = function(Dataset){
+  
+  indx_n = findpeaks(Dataset$North_water, threshold = 1)
+  indx_s = findpeaks(Dataset$South_water, threshold = 1)
+
+  sample_n = Dataset[indx_n[,2], ]
+  sample_s = Dataset[indx_s[,2], ]
+
+  
+  count2 = as.Date(intersect(sample_n$sample_date, sample_s$sample_date))
+  
+  count1 = as.Date(c(setdiff(sample_n$sample_date, sample_s$sample_date),setdiff(sample_s$sample_date, sample_n$sample_date)))
+ 
+  temp1 = c(count2, count1)
+  temp2 = c(rep("Two", length(count2)), rep("One", length(count1)))
+  
+  same_date = data.frame("Same_Date" = temp1, "Category" = temp2)
+  
+  all = list("NorthPeaks"=sample_n, "SouthPeaks"=sample_s, "Distrbution"=same_date)
+  
+  return(all)
+  
+}
+
+same_water = peaks_water(water_miss_correct)
+same_water$Distrbution
+
+
+count_water = barplot(sort(table(same_water$Distrbution$Category), decreasing = TRUE),        
+                ylim = c(0, max(table(same_water$Distrbution$Category))),
+                # xlab = "Counts",
+                ylab = "Number of Days",
+                main = 'Number of Same Date Wastewater Peaks from Northern and Southern')
+
+text(count_water,sort(table(same_water$Distrbution$Category), decreasing = TRUE)*0.95 , paste(sort(table(same_water$Distrbution$Category), decreasing = TRUE)) ,cex=1) 
+
+#### peaks in weekdays
+
+week_n_water = barplot(sort(table(same_water$NorthPeaks$Weekday), decreasing = TRUE),        
+                 ylim = c(0, max(table(same_water$NorthPeaks$Weekday))),
+                 # xlab = "Counts",
+                 ylab = "Number of Peaks",
+                 main = 'Number of Wastewater Peaks from Northern')
+
+text(week_n_water,sort(table(same_water$NorthPeaks$Weekday), decreasing = TRUE)*(0.95) , paste(sort(table(same_water$NorthPeaks$Weekday), decreasing = TRUE)) ,cex=1) 
+
+week_s_water = barplot(sort(table(same_water$SouthPeaks$Weekday), decreasing = TRUE),        
+                       ylim = c(0, max(table(same_water$SouthPeaks$Weekday))),
+                       # xlab = "Counts",
+                       ylab = "Number of Peaks",
+                       main = 'Number of Wastewater Peaks from Southern')
+
+text(week_s_water,sort(table(same_water$SouthPeaks$Weekday), decreasing = TRUE)*(0.95) , paste(sort(table(same_water$SouthPeaks$Weekday), decreasing = TRUE)) ,cex=1) 
+
+
+#### test if these differences are significant or randomly distributed with the peaks
+
+## chi-square test for the frequency (independent observations): 
+######H_0:  proportion of number of peeks in everyday are the same
+
+test_n = chisq.test(table(same_water$NorthPeaks$Weekday))
+
+test_s = chisq.test(table(same_water$SouthPeaks$Weekday))
+
+North = as.data.frame(table(same_water$NorthPeaks$Weekday))[,2]
+South = as.data.frame(table(same_water$SouthPeaks$Weekday))[,2]
+row_names = c("Friday", "Monday", "Saturday", "Sunday", "Thursday", "Tuesday", "Wednesday")
+
+fretable = cbind(North,South)
+rownames(fretable) = row_names
+
+chi_ind = chisq.test(fretable)
+chi_ind
+
+#H_0: the row and the column variables of the contingency table are independent.
+
+
+
+##################################################################333
+########### merge cases and water
+#######################################################################
+
+case_waste = merge(x = North_South_case, y = water_miss_correct, all = TRUE)
 
 case_waste$weekdays = strftime(case_waste$sample_date, format = "%A")
 
 head(case_waste)
 
-case_long = melt(case_waste[, 1:5], id.vars = "sample_date") 
+case_long = melt(case_waste[, c(1,3,4,5,6)], id.vars = "sample_date") 
 head(case_long)
 
 ggplot(case_long,                            # Draw ggplot2 time series plot
