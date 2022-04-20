@@ -160,7 +160,7 @@ North_nas = North_town_cases[is.na(North_town_cases$Boston),names ]
 
 ## barplot
 
-missing = barplot(table(North_nas$Weekday), main="Borplot for Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
+missing = barplot(table(North_nas$Weekday), main="Borplot for Covid Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
 
 text(missing,table(North_nas$Weekday)*0.95, paste(table(North_nas$Weekday)) ,cex=1) 
 
@@ -239,6 +239,11 @@ ggplot(case_long,                            # Draw ggplot2 time series plot
   geom_line() + 
   ggtitle("Northern and Southern Daily Posivitive Cases")
 
+short_range = seq(as.Date("2021-12-01"), as.Date("2022-02-01"), by = 1) 
+
+short_case = data.frame(North_South_case[North_South_case$sample_date %in% short_range,c(1,3,4)],
+                        "Boston" = North_town_miss_correct[North_town_miss_correct$sample_date %in% short_range,"Boston"])
+
 short_case_long = melt(short_case, id.vars = "sample_date")
 ggplot(short_case_long,                            # Draw ggplot2 time series plot
        aes(x = sample_date,
@@ -294,6 +299,13 @@ same = peaks(North_South_case, North_town_miss_correct)
 
 same$Distrbution
 
+same$NorthPeaks$Diff =  same$NorthPeaks$sample_date - dplyr::lag(same$NorthPeaks$sample_date, n = 1)
+
+same$SouthPeaks$Diff =  same$SouthPeaks$sample_date - dplyr::lag(same$SouthPeaks$sample_date, n = 1)
+
+
+
+
 plot(North_South_case$sample_date, North_South_case$North_sum,
      type = "l",
      col = 2,
@@ -345,11 +357,28 @@ week_b = barplot(sort(table(same$BostonPeaks$Weekday), decreasing = TRUE),
                  ylim = c(0, max(table(same$BostonPeaks$Weekday))),
                  # xlab = "Counts",
                  ylab = "Number of Peaks",
-                 main = 'Number of Peaks from Souththern')
+                 main = 'Number of Peaks from Boston')
 
 text(week_b,sort(table(same$BostonPeaks$Weekday), decreasing = TRUE)*(0.95) , paste(sort(table(same$BostonPeaks$Weekday), decreasing = TRUE)) ,cex=1) 
 
+##### peaks dif in days
+dif_n = barplot(table(same$NorthPeaks$Diff), 
+                      ylim = c(0, max(table(same$NorthPeaks$Diff))+5),
+                      # xlab = "Counts",
+                      ylab = "Number of Diffence in Days",
+                      main = 'Difference in Days Between Northern Cases Peaks')
 
+text(dif_n,table(same$NorthPeaks$Diff)*(0.95) , 
+     paste(table(same$NorthPeaks$Diff)) ,cex=1) 
+
+dif_s = barplot(table(same$SouthPeaks$Diff), 
+                ylim = c(0, max(table(same$SouthPeaks$Diff))+5),
+                # xlab = "Counts",
+                ylab = "Number of Diffence in Days",
+                main = 'Difference in Days Between South Cases Peaks')
+
+text(dif_s,table(same$SouthPeaks$Diff)*(0.95) , 
+     paste(table(same$SouthPeaks$Diff)) ,cex=1) 
 
 ########### example for 2021-12-01, 2022-2-1 
 #################
@@ -405,6 +434,7 @@ short_ggplot = ggplot(short_case_long,                            # Draw ggplot2
 plot(short_case$sample_date, short_case$North_sum,
      type = "l",
      col = 2,
+     ylim = c(0, max(short_case$North_sum,short_case$South_sum )),
      # labels = format(wastewater$Sample_date, "%b %Y"),
      xlab = "Date",
      main = "Northern, Southern, and Boston During 2021-12-01---2022-02-01",
@@ -441,6 +471,30 @@ water$South_water = as.numeric(water$South_water)
 water$North_water = as.numeric(water$North_water)
 
 sum(is.na(water))
+
+
+###### Missings
+water$Weekday = strftime(water$sample_date, format = "%A")
+
+names = c("sample_date", "Weekday")
+
+water_nas = water[is.na(water$North_water),names ]
+
+## barplot
+
+missing_w = barplot(table(water_nas$Weekday), main="Borplot for Northern Wastewater Missing Dates",
+                  ylim = c(0, max(table(water_nas$Weekday))+5), ylab = "Frequency")
+
+text(missing_w,table(water_nas$Weekday)*0.95, paste(table(water_nas$Weekday)) ,cex=1) 
+
+
+water_s_nas = water[is.na(water$South_water),names ]
+
+missing_w_s = barplot(table(water_s_nas$Weekday), main="Borplot for Southern Wastewater Missing Dates",
+                    ylim = c(0, max(table(water_s_nas$Weekday))+5), ylab = "Frequency")
+
+text(missing_w_s,table(water_s_nas$Weekday)*0.95, paste(table(water_s_nas$Weekday)) ,cex=1) 
+
 
 
 
@@ -482,7 +536,23 @@ water_miss_correct = implement(water, c("South_water","North_water"))
 sum(is.na(water_miss_correct))
 
 water_miss_correct$Weekday = strftime(water_miss_correct$sample_date, format = "%A")
+
+
   
+#### 2021-12-01 -- 2022-2-1
+short_range = seq(as.Date("2021-12-01"), as.Date("2022-02-01"), by = 1) 
+
+short_water = water_miss_correct[water_miss_correct$sample_date %in% short_range, 1:3]
+short_water_long = melt(short_water, id.vars = "sample_date")
+ggplot(short_water_long,                            # Draw ggplot2 time series plot
+       aes(x = sample_date,
+           y = value,
+           col = variable)) +
+  geom_line() + 
+  ggtitle("Northern and Southern Daily Posivitive Cases During 2021-12-01 -- 2022-02-01 ")
+
+
+
 ############# find peaks
 
 peaks_water = function(Dataset){
@@ -538,6 +608,56 @@ week_s_water = barplot(sort(table(same_water$SouthPeaks$Weekday), decreasing = T
                        main = 'Number of Wastewater Peaks from Southern')
 
 text(week_s_water,sort(table(same_water$SouthPeaks$Weekday), decreasing = TRUE)*(0.95) , paste(sort(table(same_water$SouthPeaks$Weekday), decreasing = TRUE)) ,cex=1) 
+
+peaks_n = same_water$NorthPeaks[same_water$NorthPeaks$sample_date %in% short_range, ]
+peaks_s = same_water$SouthPeaks[same_water$SouthPeaks$sample_date %in% short_range, ]
+
+plot(short_water$sample_date, short_water$North_water,
+     type = "l", ylim = c(0, max(short_water$North_water, short_water$South_water)),
+     col = 2,
+     # labels = format(wastewater$Sample_date, "%b %Y"),
+     xlab = "Date",
+     main = "Wastewater from Northern and Southern During 2021-12-01---2022-02-01",
+     ylab = "Values" )
+
+lines(short_water$sample_date, short_water$South_water, type = 'l', col = 3)
+
+points(peaks_n$sample_date, peaks_n$North_water, col = 2 )
+points(peaks_s$sample_date, peaks_s$South_water, col = 3 )
+
+legend("topleft",                           # Add legend to plot
+       c("Northern","Southern"),
+       lty = 1,
+       col = c(2,3))
+
+
+#### Peak ranges 
+
+same_water$NorthPeaks$Diff =  same_water$NorthPeaks$sample_date - dplyr::lag(same_water$NorthPeaks$sample_date, n = 1)
+
+same_water$SouthPeaks$Diff =  same_water$SouthPeaks$sample_date - dplyr::lag(same_water$SouthPeaks$sample_date, n = 1)
+
+
+dif_n_water = barplot(table(same_water$NorthPeaks$Diff), 
+                      ylim = c(0, max(table(same_water$NorthPeaks$Diff))+5),
+                       # xlab = "Counts",
+                       ylab = "Number of Diffence in Days",
+                       main = 'Difference in Days Between Northern Wastewater Peaks')
+
+text(dif_n_water,table(same_water$NorthPeaks$Diff)*(0.95) , 
+     paste(table(same_water$NorthPeaks$Diff)) ,cex=1) 
+
+
+dif_s_water = barplot(table(same_water$SouthPeaks$Diff), 
+                      ylim = c(0, max(table(same_water$SouthPeaks$Diff))+5),
+                      # xlab = "Counts",
+                      ylab = "Number of Diffence in Days",
+                      main = 'Difference in Days Between Southern Wastewater Peaks')
+
+text(dif_s_water,table(same_water$SouthPeaks$Diff)*(0.95) , 
+     paste(table(same_water$SouthPeaks$Diff)) ,cex=1) 
+
+
 
 
 #### test if these differences are significant or randomly distributed with the peaks
