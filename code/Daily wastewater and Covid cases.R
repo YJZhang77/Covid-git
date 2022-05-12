@@ -69,7 +69,7 @@ library(dplyr)
 ###### Covid Cases ##########################
 #############################################
 
-cases = read.csv("covid_confirmed_usafacts.csv", header = TRUE)
+cases = read.csv("C:/Users/Yanjia/Desktop/research/BU Infection/covid/BU and CDC/covid_confirmed_usafacts.csv", header = TRUE)
 
 cases_MA = cases[cases$State == "MA",]
 
@@ -490,15 +490,27 @@ rolCorPlot(y = case_s, x=waster_s,  width= c(7,10,12), level = 0.95, main = NULL
 
 dlmFit1 <- dlm(formula = Southern ~ South_W,
                
-               data = wastewater_covid, q = 10)
+               data = wastewater_covid, q = 15)
 summary(dlmFit1)
+
+dlmFit1 <- dlm(formula = South_W ~ Southern,
+               
+               data = wastewater_covid, q = 15)
+summary(dlmFit1)
+
 
 str(wastewater_covid)
 
-dlmFit1 <- dlm(formula = South_cum ~ South_W,
+dlmFit1_cum <- dlm(formula = South_W ~ South_cum,
                
                data = wastewater_covid, q = 10)
-summary(dlmFit1)
+summary(dlmFit1_cum)
+
+dlmFit1_cum <- dlm(formula = South_cum ~ South_W,
+                   
+                   data = wastewater_covid, q = 15)
+summary(dlmFit1_cum)
+
 
 remove = list(South_W = c(1,2,3,4,5,6,7))
 
@@ -515,13 +527,19 @@ summary(dlmFit1_2)
 
 dlmFit2 <- dlm(formula = Northern ~ North_W,
                
-               data = wastewater_covid, q = 10)
+               data = wastewater_covid, q = 15)
+summary(dlmFit2)
+
+dlmFit2 <- dlm(formula = North_W ~ Northern,
+               
+               data = wastewater_covid, q = 15)
 summary(dlmFit2)
 
 str(wastewater_covid)
 
-dlmFit2 <- dlm(formula = North_cum ~ North_W,
+
+dlmFit2_cum <- dlm(formula = North_cum ~ North_W,
                
-               data = wastewater_covid, q = 15)
-summary(dlmFit2)
+               data = wastewater_covid, q = 10)
+summary(dlmFit2_cum)
 
