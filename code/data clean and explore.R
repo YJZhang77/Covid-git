@@ -1,39 +1,39 @@
 #### Data clean and explore
 
 
-setwd("C:/Users/Yanjia/Desktop/research/BU Infection/covid/Covid-git/code")
+setwd("C:/Users/yzhang17/Desktop/Research/Covid/Covid-git")
 
-
+source("code/utility.R")
 #############################################
 ###### Covid Cases ##########################
 #############################################
 
-cases_o = read.csv("town positive3_23.csv", header = TRUE)
+cases_o = read.csv("data/town positive3_23.csv", header = TRUE)
 
 town_cases = data.frame(cases_o)
-
-
 
 c(nrow(town_cases), ncol(town_cases))
 
 ################## records counts
 
-date = names(town_cases)[2:ncol(town_cases)]
+# date = names(town_cases)[2:ncol(town_cases)]
+# 
+# sample_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
+# 
+# sample_date[sample_date == "2020-10-23"]
+# 
+# range(sample_date)
+# 
+# length(sample_date)
+# 
+# Weekday = strftime(sample_date, format = "%A")
+# 
+# barplot(table(Weekday), main = 'Number of Reports from Covid')
 
-sample_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
 
-sample_date[sample_date == "2020-10-23"]
+###################### town names
 
-
-
-length(sample_date)
-
-Weekday = strftime(sample_date, format = "%A")
-
-barplot(table(Weekday), main = 'Number of Reports from Covid')
-
-
-###################### town names 
+town.names = list()
 
 North_town = c("Waltham", "Lexington", "Bedford",
                "Burlington", "Wilmington", "Reading", "Wakefield","Stoneham",
@@ -45,237 +45,154 @@ North_town = c("Waltham", "Lexington", "Bedford",
 
 Boston = "Boston"
 
-South_town = c("Ashland", "Framingham", "Natick", "Wellesley", "Newton", "Needham",
-               "Brookline",  "Dedham", "Westwood", "Norwood", "Walpole", "Milton",
+South_town = c("Brookline", "Newton", "Ashland", "Framingham", "Natick", "Wellesley", 
+               "Needham", "Dedham", "Westwood", "Norwood", "Walpole", "Milton",
                "Canton", "Stoughton", "Quincy", "Braintree", "Randolph", "Holbrook",
                "Weymouth", "Hingham")
 
-c(length(North_town), length(South_town))
-
-#### Q : for the cross over cities? 
-#### Q : for counts < 5, assume it is 2.5 for better check.  
-
-town_cases[town_cases == "<5"] = 2.5
-
-##### check missing dates 
+town.names[["North"]] = North_town
+town.names[["South"]] = South_town
+town.names[["Boston"]] = Boston
 
 
-date_range = seq(min(sample_date), max(sample_date), by = 1) 
-date_range[!date_range %in% sample_date]
+North_South_case_all = case.data(town_cases, town.names)
 
-Weekday = strftime(date_range, format = "%A")
-
-date_list = data.frame("sample_date" = date_range,
-                       "Weekday" = Weekday)
-
-#### use the date range instead of the original dates
-
-
-########### transpose the dataframe
-
-cases = function(data_name, Town_Name, date_range){
-  
-  part_cases = data_name[data_name[,1] %in% Town_Name, ] 
-  n = ncol(part_cases)
-  date = names(part_cases)[2:n]
-  case_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
-  
-  col_names = c('sample_date', Town_Name)
-  
-  cases = data.frame(matrix(ncol=length(col_names), nrow= length(case_date)))
-  
-  colnames(cases) = col_names
-  
-  cases$sample_date = case_date
-  # cases$Weekday = Weekday
-  
-  for (i in Town_Name ){
-    
-    cases[i] = as.numeric(unlist(part_cases[part_cases$X == i, 2:n], use.names = FALSE))
-  }
-  
-  cases_all = merge(date_range, cases, by ='sample_date', all.x=TRUE)
-  
-  return(cases_all)
-}
-
-
-####### North
-
-North_town_cases = cases(town_cases, North_town, date_list)
-
-tail(North_town_cases)
-sum(North_town_cases[,3:ncol(North_town_cases)] == 2.5, na.rm = TRUE)
-
-range(North_town_cases$sample_date)
-
-c(nrow(North_town_cases), ncol(North_town_cases))
-
-
-# n = rep("NA", length(North_town))
-# for (i in 1:length(North_town)){
-#   n[i] = sum(is.na(North_town_cases[,i+2]))
-# }
-
-
-####### Boston
-
-Boston_cases = cases(town_cases, Boston, date_list)
-
-###### South 
-
-South_town_cases = cases(town_cases, South_town, date_list)
-
-sum(South_town_cases[,2:ncol(South_town_cases)] == 2.5, na.rm =TRUE )
-
-range(South_town_cases$sample_date)
-
-tail(South_town_cases)
-
-c(nrow(South_town_cases), ncol(South_town_cases))
-
-
-###### Total number of <5 
-
-n1 = sum(North_town_cases[,3:ncol(North_town_cases)] == 2.5, na.rm = TRUE)
-
-n2 = sum(South_town_cases[,2:ncol(South_town_cases)] == 2.5, na.rm =TRUE )
-
-n3 = sum(Boston_cases[, 3] == 2.5, na.rm = TRUE)
-
-total = nrow(North_town_cases)*(ncol(North_town_cases)-2) + nrow(South_town_cases)*(ncol(South_town_cases)-2)+nrow(Boston_cases)
-
-percentage = (n1+n2 + n3)/total
-percentage
-
-
-# n = rep("NA", length(South_town))
-# for (i in 1:length(South_town)){
-#   n[i] = sum(is.na(South_town_cases[,i+2]))
-# }
-# n
+# 
+# #### Q : for the cross over cities? 
+# #### Q : for counts < 5, assume it is 2.5 for better check.  
+# 
+# town_cases[town_cases == "<5"] = 2.5
+# 
+# tail(town_cases)
+# 
+# ##### check missing dates 
+# date = names(town_cases)[2:ncol(town_cases)]
+# 
+# sample_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
+# 
+# date_range = seq(min(sample_date), max(sample_date), by = 1) 
+# date_range[!date_range %in% sample_date]
+# 
+# Weekday = strftime(date_range, format = "%A")
+# 
+# date_list = data.frame("sample_date" = date_range,
+#                        "Weekday" = Weekday)
+# 
+# #### use the date range instead of the original dates
+# 
+# 
+# ########### transpose the dataframe
+# 
+# ####### North
+# 
+# North_town_cases = cases(town_cases, North_town, date_list)
+# 
+# tail(North_town_cases)
+# sum(North_town_cases[,3:ncol(North_town_cases)] == 2.5, na.rm = TRUE)
+# 
+# range(North_town_cases$sample_date)
+# 
+# c(nrow(North_town_cases), ncol(North_town_cases))
+# 
+# 
+# # n = rep("NA", length(North_town))
+# # for (i in 1:length(North_town)){
+# #   n[i] = sum(is.na(North_town_cases[,i+2]))
+# # }
+# 
+# 
+# ####### Boston
+# 
+# Boston_cases = cases(town_cases, Boston, date_list)
+# 
+# ###### South 
+# 
+# South_town_cases = cases(town_cases, South_town, date_list)
+# 
+# sum(South_town_cases[,2:ncol(South_town_cases)] == 2.5, na.rm =TRUE )
+# 
+# range(South_town_cases$sample_date)
+# 
+# tail(South_town_cases)
+# 
+# c(nrow(South_town_cases), ncol(South_town_cases))
+# 
+# 
+# ###### Total number of <5 
+# 
+# n1 = sum(North_town_cases[,3:ncol(North_town_cases)] == 2.5, na.rm = TRUE)
+# 
+# n2 = sum(South_town_cases[,2:ncol(South_town_cases)] == 2.5, na.rm =TRUE )
+# 
+# n3 = sum(Boston_cases[, 3] == 2.5, na.rm = TRUE)
+# 
+# total = nrow(North_town_cases)*(ncol(North_town_cases)-2) + nrow(South_town_cases)*(ncol(South_town_cases)-2)+nrow(Boston_cases)
+# 
+# percentage = (n1+n2 + n3)/total
+# percentage
+# 
+# 
+# # n = rep("NA", length(South_town))
+# # for (i in 1:length(South_town)){
+# #   n[i] = sum(is.na(South_town_cases[,i+2]))
+# # }
+# # n
+# # 
+# # South_nas = South_town_cases[is.na(South_town_cases$Ashland), 1]
+# # 
+# # length(South_nas)
+# 
+# 
+# ### all the dates are the same North/ South
 # 
 # South_nas = South_town_cases[is.na(South_town_cases$Ashland), 1]
+# n_missing = length(South_nas)
+# names = c("sample_date", "Weekday")
 # 
-# length(South_nas)
+# North_nas = North_town_cases[is.na(North_town_cases$Boston),names ]
+# 
+# ## barplot
+# 
+# missing = barplot(table(North_nas$Weekday), main="Borplot for Covid Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
+# 
+# text(missing,table(North_nas$Weekday)*0.95, paste(table(North_nas$Weekday)) ,cex=1) 
 
-
-### all the dates are the same North/ South
-
-South_nas = South_town_cases[is.na(South_town_cases$Ashland), 1]
-n_missing = length(South_nas)
-names = c("sample_date", "Weekday")
-
-North_nas = North_town_cases[is.na(North_town_cases$Boston),names ]
-
-## barplot
-
-missing = barplot(table(North_nas$Weekday), main="Borplot for Covid Missing Dates",ylim = c(0, max(table(North_nas$Weekday))+5), ylab = "Frequency")
-
-text(missing,table(North_nas$Weekday)*0.95, paste(table(North_nas$Weekday)) ,cex=1) 
-
-
-######### implementing NAs with the average number of 10 
-
-implement = function(data_name, Town_name){
-  
-  test = data_name
-  n = nrow(data_name)
-  
-  for (i in Town_name){
-    for (j in 1:n){
-      if (is.na(data_name[j, i]) & j-5 < 1 & j+5 <= n ){ 
-        test[j,i] = round(mean(data_name[1:j+5, i], na.rm = T))
-      }
-      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 <= n){ 
-        test[j,i] = round(mean(data_name[(j-5):j+5, i],na.rm = T))
-      }
-      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 > n){ 
-        test[j,i] = round(mean(data_name[(j-5):n, i],na.rm = T))
-      }
-      else test[j, i] = data_name[j,i]
-    }
-  }
-  
-  return(test)
-} 
-
-North_town_miss = implement(North_town_cases, North_town)
-tail(North_town_miss)
-
-South_town_miss = implement(South_town_cases, South_town)
-tail(South_town_miss)
-
-Boston_miss = implement(Boston_cases, Boston)
-
-
-#### delete double "2020-10-23" 
-
-North_town_miss_correct = North_town_miss[-c(115), ]
-
-North_town_miss_correct[North_town_miss_correct$sample_date == "2020-10-23", ]
-
-South_town_miss_correct = South_town_miss[-c(115), ]
-South_town_miss_correct[South_town_miss_correct$sample_date == "2020-10-23", ]
-
-Boston_miss_correct = Boston_miss[-c(115), ]
-Boston_miss_correct[Boston_miss_correct$sample_date == "2020-10-23", ]
-
-
-tail(North_town_miss_correct$Waltham)
-###################### daily sum
-
-North_sum = rowSums(North_town_miss_correct[, 3:ncol(North_town_miss)])
-South_sum = rowSums(South_town_miss_correct[, 3:ncol(South_town_miss)])
-
-North_South_case = date_list
-North_South_case$North_sum =  North_sum
-North_South_case$South_sum =  South_sum
-North_South_case$South_sum =  South_sum
-
-North_South_case$Boston =  Boston_miss_correct$Boston
-
-names(North_South_case)
-
-
-length(North_sum)
-nrow(date_list)
 
 
 library("reshape2")
 library("ggplot2")
 
-case = data.frame(North_South_case[, c(1,3,4)], "Boston" = North_town_miss_correct$Boston)
-
-short_range = seq(as.Date("2021-12-01"), as.Date("2022-02-01"), by = 1) 
-
-short_case = data.frame(North_South_case[North_South_case$sample_date %in% short_range,c(1,3,4)],
-                        "Boston" = North_town_miss_correct[North_town_miss_correct$sample_date %in% short_range,"Boston"])
-
-
-case_long = melt(case, id.vars = "sample_date") 
-
-ggplot(case_long,                            # Draw ggplot2 time series plot
-       aes(x = sample_date,
-           y = value,
-           col = variable)) +
-  geom_line() + 
-  ggtitle("Northern and Southern Daily Posivitive Cases")
-
-short_range = seq(as.Date("2021-12-01"), as.Date("2022-02-01"), by = 1) 
-
-short_case = data.frame(North_South_case[North_South_case$sample_date %in% short_range,c(1,3,4)],
-                        "Boston" = North_town_miss_correct[North_town_miss_correct$sample_date %in% short_range,"Boston"])
-
-short_case_long = melt(short_case, id.vars = "sample_date")
-ggplot(short_case_long,                            # Draw ggplot2 time series plot
-       aes(x = sample_date,
-           y = value,
-           col = variable)) +
-  geom_line() + 
-  ggtitle("Northern and Southern Daily Posivitive Cases During 2021-12-01 -- 2022-02-01 ")
-
-
+# case = data.frame(North_South_case[, c(1,3,4)], "Boston" = North_town_miss_correct$Boston)
+# 
+# short_range = seq(as.Date("2021-12-01"), as.Date("2022-02-01"), by = 1) 
+# 
+# short_case = data.frame(North_South_case[North_South_case$sample_date %in% short_range,c(1,3,4)],
+#                         "Boston" = North_town_miss_correct[North_town_miss_correct$sample_date %in% short_range,"Boston"])
+# 
+# 
+# case_long = melt(case, id.vars = "sample_date") 
+# 
+# ggplot(case_long,                            # Draw ggplot2 time series plot
+#        aes(x = sample_date,
+#            y = value,
+#            col = variable)) +
+#   geom_line() + 
+#   ggtitle("Northern and Southern Daily Posivitive Cases")
+# 
+# short_range = seq(as.Date("2021-12-01"), as.Date("2022-02-01"), by = 1) 
+# 
+# short_case = data.frame(North_South_case[North_South_case$sample_date %in% short_range,c(1,3,4)],
+#                         "Boston" = North_town_miss_correct[North_town_miss_correct$sample_date %in% short_range,"Boston"])
+# 
+# short_case_long = melt(short_case, id.vars = "sample_date")
+# ggplot(short_case_long,                            # Draw ggplot2 time series plot
+#        aes(x = sample_date,
+#            y = value,
+#            col = variable)) +
+#   geom_line() + 
+#   ggtitle("Northern and Southern Daily Posivitive Cases During 2021-12-01 -- 2022-02-01 ")
+# 
+# 
 
 
 

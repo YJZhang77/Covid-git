@@ -3,59 +3,96 @@ library(pracma)
 library(ggrepel)
 
 
-########### transpose the dataframe
+########### transpose the data frame and implement missing values with the average of (-5, +5)
 
-cases = function(data_name, Town_Name, date_range){
+cases.replace_missing = function(Data_Name, Town_Name, Date_Range){
+  # Data_Name: the original data frame, each row represent the a town
+  # Town_Name: the town name list for South and North, and Boston
+  # Data_Range: is the data range from Junly 1s 2020 to March 22nd 2022
   
-  part_cases = data_name[data_name[,1] %in% Town_Name, ] 
+  part_cases = Data_Name[Data_Name[,1] %in% Town_Name, ] 
   n = ncol(part_cases)
   date = names(part_cases)[2:n]
   case_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
   
   col_names = c('sample_date', Town_Name)
   
-  cases = data.frame(matrix(ncol=length(col_names), nrow= length(case_date)))
+  tmp.cases = data.frame(matrix(ncol=length(col_names), nrow= length(case_date)))
   
-  colnames(cases) = col_names
+  colnames(tmp.cases) = col_names
   
-  cases$sample_date = case_date
+  tmp.cases$sample_date = case_date
   # cases$Weekday = Weekday
   
-  for (i in Town_Name ){
+  for (i in Town_Name){
     
-    cases[i] = as.numeric(unlist(part_cases[part_cases$X == i, 2:n], use.names = FALSE))
+    tmp.cases[i] = as.numeric(unlist(part_cases[part_cases$X == i, 2:n], use.names = FALSE))
   }
   
-  cases_all = merge(date_range, cases, by ='sample_date', all.x=TRUE)
+  tmp = merge(Date_Range, tmp.cases, by ='sample_date', all.x=TRUE)
   
-  return(cases_all)
-}
-
-
-
-#### implement missing values with the average of (-5, +5)
-implement = function(data_name, Town_name){
+  n = nrow(tmp)
+  case = tmp
   
-  test = data_name
-  n = nrow(data_name)
-  
-  for (i in Town_name){
+  for (i in Town_Name){
     for (j in 1:n){
-      if (is.na(data_name[j, i]) & j-5 < 1 & j+5 <= n ){ 
-        test[j,i] = round(mean(data_name[1:j+5, i], na.rm = T))
+      if (is.na(tmp[j, i]) & j-5 < 1 & j+5 <= n ){ 
+        case[j,i] = round(mean(tmp[1:j+5, i], na.rm = T))
       }
-      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 <= n){ 
-        test[j,i] = round(mean(data_name[(j-5):j+5, i],na.rm = T))
+      else if ( is.na(tmp[j, i]) & j-5 >= 1 & j+5 <= n){ 
+        case[j,i] = round(mean(tmp[(j-5):j+5, i],na.rm = T))
       }
-      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 > n){ 
-        test[j,i] = round(mean(data_name[(j-5):n, i],na.rm = T))
+      else if ( is.na(tmp[j, i]) & j-5 >= 1 & j+5 > n){ 
+        case[j,i] = round(mean(tmp[(j-5):n, i],na.rm = T))
       }
-      else test[j, i] = data_name[j,i]
+      else case[j, i] = tmp[j,i] 
     }
   }
   
-  return(test)
-} 
+  if (nrow(case[case$sample_date=="2020-10-23",]) > 1) {case = case[-c(115),]}
+  return(case)
+}
+
+### get the cleaned case data frame
+
+case.data <- function(overeall_data, town.names){
+  # overall.data: the original data frame, each row represent the a town
+  # town.names: the data frame with south, north, and Boston names
+  # date.list : the date time 
+  
+  overeall_data[overeall_data == "<5"] = 2.5
+  
+  date = names(overeall_data)[2:ncol(overeall_data)]
+  
+  sample_date = as.Date(substring(date, 2), format = "%m.%d.%Y")
+  
+  date_range = seq(min(sample_date), max(sample_date), by = 1) 
+  date_range[!date_range %in% sample_date]
+  
+  Weekday = strftime(date_range, format = "%A")
+  
+  date_list = data.frame("sample_date" = date_range,
+                         "Weekday" = Weekday)
+  
+  North_town_cases= cases.replace_missing(overeall_data, town.names[["North"]], date_list)
+  
+  South_town_cases = cases.replace_missing(overeall_data, town.names[["South"]], date_list)
+  
+  Boston_cases = cases.replace_missing(overeall_data, town.names[["Boston"]], date_list)
+  
+  North_sum = rowSums(North_town_cases[, 3:ncol(North_town_cases)])
+  South_sum = rowSums(South_town_cases[, 3:ncol(South_town_cases)])
+  
+  All_case = date_list
+  All_case$North_sum =  North_sum
+  All_case$South_sum =  South_sum
+  All_case$Boston =  Boston_cases$Boston
+  
+  return(All_case)
+  
+}
+
+
 
 
 ######## check if they have the same date peaks and vallens
