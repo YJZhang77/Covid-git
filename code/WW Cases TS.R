@@ -11,9 +11,11 @@ library(tseries)
 library(forecast)
 library(dLagM)
 
-setwd("C:/Users/Yanjia/Desktop/research/BU Infection/covid/BU and CDC")
+setwd("C:/Users/yzhang17/Desktop/Research/Covid/Covid-git")
 
-cases_wastewater = read.csv("case_sum_wastewater.csv", header = TRUE)[,c(-1)]
+source("code/utility.R")
+
+cases_wastewater = read.csv("data/case_sum_wastewater.csv", header = TRUE)[,c(-1)]
 head(cases_wastewater)
 tail(cases_wastewater)
 
@@ -26,30 +28,103 @@ range(cases_wastewater$sample_date)
 
 cases_wastewater$Boston
 
-cases_wastewater["North_ratio"] = cases_wastewater$North_water/cases_wastewater$North_sum
+cases_wastewater["North_ww.case.ratio"] = cases_wastewater$North_water/cases_wastewater$North_sum
 
-cases_wastewater["South_ratio"] = cases_wastewater$South_water/cases_wastewater$South_sum
+cases_wastewater["South_ww.case.ratio"] = cases_wastewater$South_water/cases_wastewater$South_sum
+
+cases_wastewater["water_sum"] = cases_wastewater$South_water + cases_wastewater$North_water
+
+cases_wastewater["ww_boston.ratio"] = cases_wastewater$water_sum/cases_wastewater$Boston
+cases_wastewater['case_sum'] = cases_wastewater$North_sum + cases_wastewater$South_sum + cases_wastewater$Boston
+cases_wastewater["ww_case.ratio"] = cases_wastewater$water_sum/cases_wastewater$case_sum
+
+col.names = names(cases_wastewater)[-c(1,2,8,9,11,12)]
+
+##### different virus variation with different time frame
+
+# 1) wild type (July 28, 2020 to November 31, 2020), 
+# 2) alpha/beta (December 1, 2020, to April 30, 2021), 
+
+# 3) delta (May 1, 2021, to October 31, 2021), 
+# 4) omicron (December 1, 2021 to March 22, 2022) 
+
+start.time = c(as.Date(range(cases_wastewater$sample_date)[1]),as.Date("2020-12-01"), as.Date("2021-05-01"), as.Date("2021-12-01") )
+end.time = c(as.Date("2020-11-30"), as.Date("2021-04-30"),as.Date('2021-10-31'), as.Date(range(cases_wastewater$sample_date)[2]) )
+
+stage.years = list()
+stage.years[[1]] = c(2020, 2020)
+stage.years[[2]] = c(2020, 2021)
+stage.years[[3]] = c(2021, 2021)
+stage.years[[4]] = c(2021, 2022)
+
+stage.years[[1]][1]
+
+stage.data = list()
+stage.ts.data = list()
+
+stage.adf.p =data.frame(matrix(NA, nrow = length(col.names), ncol = 4))
+
+rownames(stage.adf.p) = col.names
+
+for (i in 1:4){
+  print(i)
+  
+  tmp.data = cases_wastewater[cases_wastewater$sample_date <= end.time[i] & cases_wastewater$sample_date > start.time[i], ]
+  stage.data[[i]] = tmp.data
+  print (end.time[i])
+  
+  timeseries.data = list()
+  
+  for (j in col.names){
+    
+    tmp.ts = ts(tmp.data[j],
+                start = c(stage.years[[i]][1], as.numeric(format(start.time[i], "%j"))),
+                end = c(stage.years[[i]][2], as.numeric(format(end.time[i], "%j"))),
+                frequency=365)
+    
+    timeseries.data[[j]] = tmp.ts 
+    
+    # stationary test :Augmented Dickey-Fuller test, 
+    # null hypothesis of a unit root of a univarate time series x 
+    # (equivalently, x is a non-stationary time series, p>0.05)
+    stage.adf.p[j,i] = adf.test(tmp.ts)$p.value 
+    
+    print(j)
+  }
+  
+  stage.ts.data[[i]] = timeseries.data
+  
+}
+length(stage.ts.data)
+
+stage.data[[3]]$Boston
 
 
-start1 = as.Date(range(cases_wastewater$sample_date)[1])
-end1 = as.Date("2020-11-30")
 
-stage1 = cases_wastewater[cases_wastewater$sample_date <= end1, ]
 
-North_cases_1 = ts(stage1$North_sum,
-                 start = c(2020, as.numeric(format(start1, "%j"))),
-                 end = c(2020, as.numeric(format(end1, "%j"))),
-                 frequency=365)
+stage1.ccf = list()
+stage1.ccf[["North"]] = ccf(stage.data[[1]]$North_water,stage.data[[1]]$North_sum, 
+                            main = "Wild Type North WW vs. Cases",
+                            ylab = "CCovF", type= "covariance")
 
-North_water_1 = ts(stage1$North_water, 
-                 start = c(2020, as.numeric(format(start1, "%j"))),
-                 end = c(2020, as.numeric(format(end1, "%j"))),
-                 frequency=365)
+stage1.ccf[["South"]] = ccf(stage.data[[1]]$South_water, stage.data[[1]]$South_sum, 
+                            main = "Wild Type South WW vs. Cases",
+                            ylab = "CCovF", type= "covariance")
 
-North_ratio_1 = ts(stage1$North_ratio, 
-                   start = c(2020, as.numeric(format(start1, "%j"))),
-                   end = c(2020, as.numeric(format(end1, "%j"))),
-                   frequency=365)
+stage1.ccf[["Boston"]] = ccf(stage.data[[1]]$water_sum, stage.data[[1]]$Boston, 
+                             main = "Wild Type Overall WW vs. Boston Cases",
+                             ylab = "CCovF", type= "covariance")
+
+
+stage1.adf.result = matrix(NA, nrow = , )
+
+
+result = adf.test(stage.ts.data[[3]]$ww_boston.ratio)
+
+
+
+
+
 
 ts.plot(North_cases_1, North_water_1, type = "l",
         main = c(paste("Northern Covid Cases and Wastewater till 2020-11-30"),
