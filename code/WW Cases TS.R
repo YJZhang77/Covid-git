@@ -13,7 +13,7 @@ library(dLagM)
 
 setwd("C:/Users/yzhang17/Desktop/Research/Covid/Covid-git")
 
-source("code/utility.R")
+source("code/utils.R")
 
 cases_wastewater = read.csv("data/case_sum_wastewater.csv", header = TRUE)[,c(-1)]
 head(cases_wastewater)
@@ -38,7 +38,7 @@ cases_wastewater["ww_boston.ratio"] = cases_wastewater$water_sum/cases_wastewate
 cases_wastewater['case_sum'] = cases_wastewater$North_sum + cases_wastewater$South_sum + cases_wastewater$Boston
 cases_wastewater["ww_case.ratio"] = cases_wastewater$water_sum/cases_wastewater$case_sum
 
-col.names = names(cases_wastewater)[-c(1,2,8,9,11,12)]
+col.names = names(cases_wastewater)[-c(1,2,8,9,11)]
 
 ##### different virus variation with different time frame
 
@@ -67,38 +67,242 @@ stage.adf.p =data.frame(matrix(NA, nrow = length(col.names), ncol = 4))
 rownames(stage.adf.p) = col.names
 
 for (i in 1:4){
-  print(i)
+  tmp.data = cases_wastewater[cases_wastewater$sample_date <= end.time[i] & cases_wastewater$sample_date >= start.time[i], ]
   
-  tmp.data = cases_wastewater[cases_wastewater$sample_date <= end.time[i] & cases_wastewater$sample_date > start.time[i], ]
   stage.data[[i]] = tmp.data
-  print (end.time[i])
-  
+
   timeseries.data = list()
+  if (i ==2)  {
+    for (j in col.names){
+      
+      tmp.ts = ts(tmp.data[j],
+                  start = c(stage.years[[i]][1], as.numeric(format(start.time[i], "%j"))),
+                  end = c(stage.years[[i]][2], as.numeric(format(end.time[i], "%j"))),
+                  frequency=366)
+      
+      
+      timeseries.data[[j]] = tmp.ts 
+      
+      # stationary test :Augmented Dickey-Fuller test, 
+      # null hypothesis of a unit root of a univarate time series x 
+      # (equivalently, x is a non-stationary time series, p>0.05)
+      stage.adf.p[j,i] = adf.test(tmp.ts)$p.value 
+    }
+  }
   
-  for (j in col.names){
+  else{
+    for (j in col.names){
+      
+      tmp.ts = ts(tmp.data[j],
+                  start = c(stage.years[[i]][1], as.numeric(format(start.time[i], "%j"))),
+                  end = c(stage.years[[i]][2], as.numeric(format(end.time[i], "%j"))),
+                  frequency=365)
+      
+      
+      timeseries.data[[j]] = tmp.ts 
+      
+      # stationary test :Augmented Dickey-Fuller test, 
+      # null hypothesis of a unit root of a univarate time series x 
+      # (equivalently, x is a non-stationary time series, p>0.05)
+      stage.adf.p[j,i] = adf.test(tmp.ts)$p.value 
+    }
     
-    tmp.ts = ts(tmp.data[j],
-                start = c(stage.years[[i]][1], as.numeric(format(start.time[i], "%j"))),
-                end = c(stage.years[[i]][2], as.numeric(format(end.time[i], "%j"))),
-                frequency=365)
-    
-    timeseries.data[[j]] = tmp.ts 
-    
-    # stationary test :Augmented Dickey-Fuller test, 
-    # null hypothesis of a unit root of a univarate time series x 
-    # (equivalently, x is a non-stationary time series, p>0.05)
-    stage.adf.p[j,i] = adf.test(tmp.ts)$p.value 
-    
-    print(j)
   }
   
   stage.ts.data[[i]] = timeseries.data
-  
 }
+
 length(stage.ts.data)
 
-stage.data[[3]]$Boston
+# if adf test p-value > 0.05, the take the first difference 
 
+stage.diff.data = list()
+
+col.indx = c(3,4,5,6,7,10,13)
+col.names
+
+stage.diff.adf.p =data.frame(matrix(NA, nrow = length(col.names), ncol = 4))
+rownames(stage.diff.adf.p) = col.names
+for (i in 1:4){
+  
+  nom.row = nrow(stage.data[[i]])# else keep the raw data
+
+  tmp.stage.diff.data = list()
+  
+  tmp.data = stage.ts.data[[i]]
+    
+  for (j in col.names){
+  
+    if (stage.adf.p[j, i] > 0.05){  #j is the row names not the index
+    tmp.stage.diff.data[[j]] = c(0,tmp.data[[j]] %>% diff())
+    }
+    else {tmp.stage.diff.data[[j]] = tmp.data[[j]]}
+    
+    stage.diff.adf.p[j,i] = adf.test(tmp.stage.diff.data[[j]])$p.value
+    print(mean(tmp.stage.diff.data[[j]]))
+    }
+  
+  
+  stage.diff.data[[i]] = tmp.stage.diff.data
+  
+}
+
+
+stage.diff2.data = list()
+
+
+stage.diff2.adf.p =data.frame(matrix(NA, nrow = length(col.names), ncol = 4))
+rownames(stage.diff2.adf.p) = col.names
+for (i in 1:4){
+  
+  nom.row = nrow(stage.data[[i]])# else keep the raw data
+  
+  tmp.stage.diff2.data = list()
+  
+  tmp.data = stage.diff.data[[i]]
+  
+  for (j in col.names){
+    
+    if (stage.diff.adf.p[j, i] > 0.05){  #j is the row names not the index
+      tmp.stage.diff2.data[[j]] = c(0,tmp.data[[j]] %>% diff())
+    }
+    else {tmp.stage.diff2.data[[j]] = tmp.data[[j]]}
+    
+    stage.diff2.adf.p[j,i] = adf.test(tmp.stage.diff2.data[[j]])$p.value
+    print(mean(tmp.stage.diff2.data[[j]]))
+  }
+  
+  
+  stage.diff2.data[[i]] = tmp.stage.diff2.data
+  
+}
+
+stage.diff.adf.p
+stage.adf.p
+
+adf.test(stage.diff.data[[1]]$North_sum)
+################################
+#### cross correlation #########
+#################################
+
+###put them into one graphand put the confidence interval with dashes###### 
+
+
+c1 = ccf(stage.diff.data[[1]]$water_sum, stage.diff.data[[1]]$case_sum,
+         # main = "Stage 1 North Case Vs. Wastewater Covariance",
+         # ylab = "CCovF", type= "covariance")
+         plot = F)
+
+c2 = ccf(stage.diff.data[[2]]$water_sum, stage.diff.data[[2]]$case_sum,
+         # main = "Stage 2 North Case Vs. Wastewater Covariance",
+         # ylab = "CCovF", type= "covariance")
+         plot = F)
+
+c3 = ccf(stage.diff.data[[3]]$water_sum, stage.diff.data[[3]]$case_sum,
+         # main = "Stage 3 North Case Vs. Wastewater Covariance",
+         # ylab = "CCovF", type= "covariance")
+         plot = F)
+
+c4 = ccf(stage.diff.data[[4]]$water_sum, stage.diff.data[[4]]$case_sum,
+         # main = "Stage 4 North Case Vs. Wastewater Covariance",
+         # ylab = "CCovF", type= "covariance")
+         plot = F)
+
+# par(mar=c(4.1, 4.1, 2.1, 1.1))
+par(mfrow=c(4,1), mai = c(0.6, 0.6, 0.05, 0.1))
+# define area for the histogram
+
+plot(c1, ci = 0.95, type = "h", xlab = NA, ylab = "Stage 1 ACF",
+     ylim = c(-0.5, 0.5), main = NA,
+     ci.col = "blue", ci.type = c("white", "ma"))
+
+plot(c2, ci = 0.95, type = "h", xlab = NA, ylab = "Stage 2 ACF",
+     ylim = NULL, main = NA,
+     ci.col = "blue", ci.type = c("white", "ma"))
+
+plot(c3, ci = 0.95, type = "h", xlab = NA, ylab ="Stage 3 ACF",
+     ylim = NULL, main = NA,
+     ci.col = "blue", ci.type = c("white", "ma"))
+
+plot(c4, ci = 0.95, type = "h", xlab = "Lag", ylab ="Stage 4 ACF",
+     ylim = NULL, main = NA,
+     ci.col = "blue", ci.type = c("white", "ma"))
+mtext("Wastewater vs. Covid Cases", side = 3, line = -2, outer = TRUE)
+
+
+
+ts.plot(stage.ts.data[[1]]$water_sum, stage.ts.data[[1]]$case_sum,
+        stage.diff2.data[[1]]$water_sum, stage.diff2.data[[1]]$case_sum,
+        type = "l",
+        # main = c(paste("Wastewater and Covid Cases in Stage 1"),
+                 # paste("Before Alpha")),
+        gpars=list(xlab=NA,ylab="Stage 1", col= c(2,3,4,7)))
+ts.plot(stage.ts.data[[2]]$water_sum, stage.ts.data[[2]]$case_sum, 
+        stage.diff2.data[[2]]$water_sum, stage.diff2.data[[2]]$case_sum,
+        type = "l",
+        # main = c(paste("Wastewater and Covid Cases in Stage 2"),
+        #          paste("Before Alpha")),
+        gpars=list(xlab = NA, ylab="Stage 2", col= c(2,3, 4,7)))
+ts.plot(stage.ts.data[[3]]$water_sum, stage.ts.data[[3]]$case_sum, 
+        stage.diff2.data[[3]]$water_sum, stage.diff2.data[[3]]$case_sum,
+        type = "l",
+        
+        # main = c(paste("Wastewater and Covid Cases in Stage 2"),
+        #          paste("Before Alpha")),
+        gpars=list(xlab=NA, ylab="Stage 3", col= c(2,3, 4,7)))
+ts.plot(stage.ts.data[[4]]$water_sum, stage.ts.data[[4]]$case_sum, 
+        stage.diff2.data[[4]]$water_sum, stage.diff2.data[[4]]$case_sum,
+        type = "l",
+        # main = c(paste("Wastewater and Covid Cases in Stage 2"),
+        #          paste("Before Alpha")),
+        gpars=list(xlab=NA, ylab="Stage 4", col= c(2,3,4,7)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+for(i in 1:4){
+  c1 = ccf(stage.diff.data[[i]]$North_sum, stage.diff.data[[i]]$North_water,
+            main = "Stage 1 North Case Vs. Wastewater Covariance",
+            ylab = "CCovF", type= "covariance")
+
+}
+col.names
+
+dlmfit1 = dlm(x = north_water_s1, y = north_cases_s1, q = 5)
+dlmfit1_2 = dlm(x = north_water_s1[1:149], y = north_cases_s1[1:149], q = 4)
+
+summary(dlmfit1)
+
+GoF(dlmfit1, dlmfit1_2)
+
+
+#################################8/8/2022
+
+
+length(North_cases_2%>% diff())
+
+length(North_cases_2)
+
+stage.data[[2]]$North_sum
+i=2
+tmp.data = cases_wastewater[cases_wastewater$sample_date <= end.time[i] & cases_wastewater$sample_date >= start.time[i], ]
+tmp.data$sample_date
+
+adf.test(stage.diff.data[[1]]["North_sum"])$p.value
+
+stage1$North_water %>% diff() %>% ggtsdisplay(main="")
+stage1$North_sum %>% diff() %>% ggtsdisplay(main="")
 
 
 
@@ -116,7 +320,7 @@ stage1.ccf[["Boston"]] = ccf(stage.data[[1]]$water_sum, stage.data[[1]]$Boston,
                              ylab = "CCovF", type= "covariance")
 
 
-stage1.adf.result = matrix(NA, nrow = , )
+
 
 
 result = adf.test(stage.ts.data[[3]]$ww_boston.ratio)
@@ -273,12 +477,12 @@ stage2 = cases_wastewater[cases_wastewater$sample_date > "2020-11-30" & cases_wa
 North_cases_2 = ts(stage2$North_sum,
                    start = c(2020, as.numeric(format(start2, "%j"))),
                    end = c(2021, as.numeric(format(end2, "%j"))),
-                   frequency=365)
+                   frequency=366)
 
 North_water_2 = ts(stage2$North_water, 
                    start = c(2020, as.numeric(format(start2, "%j"))),
                    end = c(2021, as.numeric(format(end2, "%j"))),
-                   frequency=365)
+                   frequency=366)
 
 
 

@@ -3,7 +3,7 @@
 
 setwd("C:/Users/yzhang17/Desktop/Research/Covid/Covid-git")
 
-source("code/utility.R")
+source("code/utils.R")
 #############################################
 ###### Covid Cases ##########################
 #############################################
@@ -55,9 +55,9 @@ town.names[["South"]] = South_town
 town.names[["Boston"]] = Boston
 
 
-North_South_case_all = case.data(town_cases, town.names)
+All_cases = case.data(town_cases, town.names)
 
-# 
+ 
 # #### Q : for the cross over cities? 
 # #### Q : for counts < 5, assume it is 2.5 for better check.  
 # 
@@ -159,8 +159,8 @@ North_South_case_all = case.data(town_cases, town.names)
 
 
 
-library("reshape2")
-library("ggplot2")
+# library("reshape2")
+# library("ggplot2")
 
 # case = data.frame(North_South_case[, c(1,3,4)], "Boston" = North_town_miss_correct$Boston)
 # 
@@ -195,6 +195,7 @@ library("ggplot2")
 # 
 
 
+#### Missing values explore 
 
 ######## check if they have the same date peaks and vallens
 
@@ -393,7 +394,7 @@ legend("topleft",                           # Add legend to plot
 ########## get the daily wastewater
 #######################################################################
 
-wastewater = read.csv("daily_wastewater325.csv")
+wastewater = read.csv("data/daily_wastewater325.csv")
 
 ## convert str date into datetime 
 
@@ -407,70 +408,47 @@ water = wastewater[wastewater$Sample_date %in%date_list[,1], c(2,3,12)]
 colnames(water) = c("South_water","North_water","sample_date" ) 
 tail(water)
 
-water$South_water = as.numeric(water$South_water)
+water$South_water = as.numeric(water$South_water)  #copies.mL.
 water$North_water = as.numeric(water$North_water)
 
 sum(is.na(water))
 
-
-###### Missings
+########################################################
+## Missings
 water$Weekday = strftime(water$sample_date, format = "%A")
 
 names = c("sample_date", "Weekday")
 
 water_nas = water[is.na(water$North_water), names]
+# 
+# ## barplot
+# 
+# missing_w = barplot(table(water_nas$Weekday), main="Borplot for Northern Wastewater Missing Dates",
+#                     ylim = c(0, max(table(water_nas$Weekday))+5), ylab = "Frequency")
+# 
+# text(missing_w,table(water_nas$Weekday)*0.95, paste(table(water_nas$Weekday)) ,cex=1) 
+# 
+# 
+# water_s_nas = water[is.na(water$South_water),names ]
+# 
+# missing_w_s = barplot(table(water_s_nas$Weekday), main="Borplot for Southern Wastewater Missing Dates",
+#                       ylim = c(0, max(table(water_s_nas$Weekday))+5), ylab = "Frequency")
+# 
+# text(missing_w_s,table(water_s_nas$Weekday)*0.95, paste(table(water_s_nas$Weekday)) ,cex=1) 
+# 
+# 
+# 
+# 
+# water_long = melt(water, id.vars = "sample_date")
+# ggplot(water_long,                            # Draw ggplot2 time series plot
+#        aes(x = sample_date,
+#            y = value,
+#            col = variable)) +
+#   geom_line() + 
+#   ggtitle("Northern and Southern Wastewater")
+# 
 
-## barplot
-
-missing_w = barplot(table(water_nas$Weekday), main="Borplot for Northern Wastewater Missing Dates",
-                    ylim = c(0, max(table(water_nas$Weekday))+5), ylab = "Frequency")
-
-text(missing_w,table(water_nas$Weekday)*0.95, paste(table(water_nas$Weekday)) ,cex=1) 
-
-
-water_s_nas = water[is.na(water$South_water),names ]
-
-missing_w_s = barplot(table(water_s_nas$Weekday), main="Borplot for Southern Wastewater Missing Dates",
-                      ylim = c(0, max(table(water_s_nas$Weekday))+5), ylab = "Frequency")
-
-text(missing_w_s,table(water_s_nas$Weekday)*0.95, paste(table(water_s_nas$Weekday)) ,cex=1) 
-
-
-
-
-water_long = melt(water, id.vars = "sample_date")
-ggplot(water_long,                            # Draw ggplot2 time series plot
-       aes(x = sample_date,
-           y = value,
-           col = variable)) +
-  geom_line() + 
-  ggtitle("Northern and Southern Wastewater")
-
-
-
-#### implement missings 
-implement = function(data_name, Town_name){
-  
-  test = data_name
-  n = nrow(data_name)
-  
-  for (i in Town_name){
-    for (j in 1:n){
-      if (is.na(data_name[j, i]) & j-5 < 1 & j+5 <= n ){ 
-        test[j,i] = round(mean(data_name[1:j+5, i], na.rm = T))
-      }
-      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 <= n){ 
-        test[j,i] = round(mean(data_name[(j-5):j+5, i],na.rm = T))
-      }
-      else if ( is.na(data_name[j, i]) & j-5 >= 1 & j+5 > n){ 
-        test[j,i] = round(mean(data_name[(j-5):n, i],na.rm = T))
-      }
-      else test[j, i] = data_name[j,i]
-    }
-  }
-  
-  return(test)
-} 
+###############################################################
 
 water_miss_correct = implement(water, c("South_water","North_water"))
 sum(is.na(water_miss_correct))
@@ -629,9 +607,9 @@ chi_ind
 ########### merge cases and water
 #######################################################################
 
-case_waste = merge(x = North_South_case, y = water_miss_correct, all = TRUE)
+case_waste = merge(x = All_cases, y = water_miss_correct, all = TRUE)
 
-write.csv(case_waste, file = "case_sum_wastewater.csv")
+write.csv(case_waste, file = "data/case_sum_wastewater.csv")
 
 
 names(case_waste)
